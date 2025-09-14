@@ -1,0 +1,181 @@
+﻿@model Battleships_Pantoja_Saavedra.Models.Board
+@{
+    ViewData["Title"] = "Board";
+    var playerName = ViewBag.PlayerName as string ?? "Player";
+    var playerLevel = ViewBag.PlayerLevel as int? ?? Model.Size - 4;
+    var shipsRemaining = ViewBag.ShipsRemaining as int? ?? Model.Cells.Count(c => c.State == Battleships_Pantoja_Saavedra.Models.CellState.Ship);
+}
+
+<!DOCTYPE html>
+
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <style>
+        .board-container {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .status {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat( @Model.Size, 48px);
+            gap: 6px;
+            width: max-content;
+            background: #111827;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .cell-btn {
+            width: 48px;
+            height: 48px;
+            border: 2px solid #374151;
+            background: #f3f4f6;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 6px;
+            transition: transform .08s;
+        }
+
+            .cell-btn:active {
+                transform: scale(.98);
+            }
+
+            .cell-btn:disabled {
+                cursor: default;
+                opacity: 0.9;
+            }
+
+        .cell-hit {
+            background: #ef4444;
+            color: white;
+        }
+
+        .cell-miss {
+            background: #6b7280;
+            color: white;
+        }
+
+        .meta {
+            margin-top: 12px;
+        }
+
+        .next-level {
+            margin-left: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: #10b981;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .quit-btn {
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="board-container">
+        <div class="status">
+            Player: <strong>@playerName</strong> — Level: <strong id="level">@playerLevel</strong>
+            <span style="margin-left:20px">Ships left: <span id="shipsRemaining">@shipsRemaining</span></span>
+        </div>
+
+        @Html.AntiForgeryToken()
+        <input type="hidden" id="playerName" value="@playerName" />
+
+        <div id="grid" class="grid">
+            @for (int y = 0; y < Model.Size; y++)
+            {
+                for (int x = 0; x < Model.Size; x++)
+                {
+                    <button class="cell-btn" data-x="@x" data-y="@y" title="Shoot"></button>
+                }
+            }
+        </div>
+
+        <div class="meta">
+            <form id="quitForm" asp-action="Quit" method="post" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="playerName" value="@playerName" />
+                <button type="submit" class="quit-btn">Quit (save)</button>
+            </form>
+
+            <button id="nextLevelBtn" class="next-level" style="display:@(shipsRemaining == 0 ? "inline-block" : "none")">Next Level</button>
+        </div>
+    </div>
+
+    <script>
+        const playerName = document.getElementById('playerName').value;
+        const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        const shipsRemainingSpan = document.getElementById('shipsRemaining');
+
+        document.querySelectorAll('.cell-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                if (this.disabled) return;
+                const x = this.dataset.x;
+                const y = this.dataset.y;
+
+                const form = new FormData();
+                form.append('__RequestVerificationToken', csrfToken);
+                form.append('playerName', playerName);
+                form.append('x', x);
+                form.append('y', y);
+
+                try {
+                    const resp = await fetch('@Url.Action("Shoot", "Game")', {
+                        method: 'POST',
+                        body: form
+                    });
+                    const data = await resp.json();
+
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    if (data.result === 'Hit') {
+                        this.classList.add('cell-hit');
+                        this.textContent = 'X';
+                    } else if (data.result === 'Miss') {
+                        this.classList.add('cell-miss');
+                        this.textContent = '•';
+                    } else if (data.result === 'Already') {
+                        this.textContent = this.textContent || '?';
+                    }
+
+                    this.disabled = true;
+                    shipsRemainingSpan.textContent = data.shipsRemaining ?? shipsRemainingSpan.textContent;
+
+                    if (data.shipsRemaining === 0) {
+                        alert('All ships destroyed! Press Next Level to continue.');
+                        document.getElementById('nextLevelBtn').style.display = 'inline-block';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Shoot failed: ' + err.message);
+                }
+            });
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', function () {
+            window.location.href = '@Url.Action("NextLevel", "Game")?playerName=' + encodeURIComponent(playerName);
+        });
+    </script>
+</body>
+

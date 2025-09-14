@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "Battleships_Pantoja_Saavedra/1.0.0": {
+        "runtime": {
+          "Battleships_Pantoja_Saavedra.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Battleships_Pantoja_Saavedra/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
